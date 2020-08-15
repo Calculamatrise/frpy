@@ -5,13 +5,13 @@ with open("README.md", "r") as r:
 
 setup(
     name="frpy", # Replace with your own username
-    version="0.1.0",
+    version="0.1.4",
     author="Calculus",
-    author_email="calculus0972@gmail.com",
+    author_email="calculus@secret.fyi",
     description="An api for FRHD",
     long_description=long_description,
     long_description_content_type="text/markdown",
-    url="https://github.com/Calculus0972/frpy/",
+    url="https://github.com/calculus-dev/frpy/",
     packages=find_packages(),
     classifiers=[
         "Programming Language :: Python :: 3"
