@@ -1,5 +1,6 @@
 from ..managers.FriendManager import FriendManager
 from .FriendRequest import FriendRequest
+from json import dumps
 
 class User:
 	__client = None
@@ -84,3 +85,10 @@ class User:
 				'headCount': stats.get('head_cnt'),
 				'totalHeadCount': stats.get('total_head_cnt')
 			}
+
+	def toJSON(self):
+		client = self.__client
+		self.__client = None
+		serialized = dumps(self.__dict__, sort_keys=True, indent=4)
+		self.__client = client
+		return serialized
