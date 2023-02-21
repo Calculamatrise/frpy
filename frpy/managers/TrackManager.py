@@ -18,6 +18,6 @@ class TrackManager(BaseManager):
 	def lookup(self, query):
 		response = self.client.post('/search/t/' + query)
 		if response:
-			return [Track(entry) for entry in response.get('tracks')]
+			return [Track(self.client, entry) for entry in response.get('tracks')]
 
 		return []

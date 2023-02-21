@@ -84,7 +84,7 @@ class BaseClient(EventEmitter):
 		if not response:
 			return
 
-		self.user = User(self, self.get('/u/' + response.get('d_name')))
+		self.user = User(self, self.get('/u/' + response.get('d_name')), True)
 		self.user.moderator = response.get('moderator')
 		self.emit(Events.get('ClientReady'))
 		return self
