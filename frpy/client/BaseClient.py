@@ -1,10 +1,9 @@
 from ..utils.EventEmitter import EventEmitter
 from ..utils.Events import Events
-from ..utils.helpers import getUser
 from ..structures.Notification import Notification
+from ..structures.User import User
 import requests
 import time
-from threading import Thread
 
 class BaseClient(EventEmitter):
 	__interval = 1e3;
@@ -15,16 +14,25 @@ class BaseClient(EventEmitter):
 			self.__interval = int(kwargs.get('interval'))
 			self.once('ready', self.__requestDatapoll)
 
-	def __request(self, endpoint, *args, **kwargs):
+	def __request(self, endpoint, **kwargs):
 		if not self.__token:
 			self.throw(Exception("Client is not logged in!"))
 
-		args = [f'https://www.freeriderhd.com{endpoint}?ajax=true&t_1=ref&t_2=desk&app_signed_request=' + self.__token, *args]
-		try:
-			if args.pop().lower().startswith('p'):
-				return requests.post(*args, **kwargs).json()
+		method = 'get'
+		if 'method' in kwargs:
+			method = kwargs.get('method')
+			del kwargs['method']
 
-			return requests.get(*args, **kwargs).json()
+		try:
+			response = getattr(requests, method)(f'https://www.freeriderhd.com{endpoint}?ajax=true&t_1=ref&t_2=desk&app_signed_request=' + self.__token, **kwargs)
+			response.raise_for_status()  # raises exception when not a 2xx response
+			if response.status_code != 204:
+				if response.headers["content-type"].strip().startswith("application/json"):
+					response = response.json()
+					if response.get('result') == False or response.get('code') == False:
+						return self.throw(Exception(response.get('msg')))
+					return response
+				return response.text
 		except Exception as e:
 			self.throw(e)
 
@@ -60,10 +68,10 @@ class BaseClient(EventEmitter):
 			raise exception
 
 	def get(self, *args):
-		return self.__request(*args, 'get')
+		return self.__request(*args)
 
 	def post(self, *args, **kwargs):
-		return self.__request(*args, 'post', **kwargs)
+		return self.__request(*args, method = 'post', **kwargs)
 
 	def login(self, token):
 		if isinstance(token, dict):
@@ -76,9 +84,9 @@ class BaseClient(EventEmitter):
 		if not response:
 			return
 
-		self.user = getUser(response.get('d_name'))
-		self.user['moderator'] = response.get('moderator')
-		self.emit('ready')
+		self.user = User(self, self.get('/u/' + response.get('d_name')))
+		self.user.moderator = response.get('moderator')
+		self.emit(Events.get('ClientReady'))
 		return self
 
 	def logout(self):

@@ -1,6 +1,11 @@
 from .BaseClient import BaseClient
+from ..managers.UserManager import UserManager
 
 class Client(BaseClient):
+	def __init__(self, **kwargs):
+		super().__init__(**kwargs)
+		self.users = UserManager(self)
+
 	def changeName(self, username):
 		return self.post(f'/account/edit_profile/', data = {
 			'name': 'u_name',
@@ -42,9 +47,16 @@ class Client(BaseClient):
 			u_id
 		})
 
-	def acceptFriend(self, u_id):
+	def acceptFriendRequest(self, username):
 		return self.post('/friends/respond_to_friend_request/', data = {
-			u_id
+			'u_name': username,
+			'action': 'accept'
+		})
+
+	def rejectFriendRequest(self, username):
+		return self.post('/friends/respond_to_friend_request/', data = {
+			'u_name': username,
+			'action': 'reject'
 		})
 
 	def challenge(self, users, m, track):
@@ -55,9 +67,10 @@ class Client(BaseClient):
 	def comment(self):
 		return self.post('/track_comments/post/')
 
-	def vote(self, rating):
-		return self.post('/track_api/vote/?t_id={}&vote={}', data = {
-			'vote': rating
+	def vote(self, t_id, vote):
+		return self.post('/track_api/vote/', data = {
+			t_id,
+			vote
 		})
 
 	def subscribe(self):
