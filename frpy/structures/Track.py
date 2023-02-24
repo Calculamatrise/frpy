@@ -1,16 +1,17 @@
 from ..managers.CommentManager import CommentManager
+from ..managers.RaceManager import RaceManager
+from ..utils.RequestHandler import RequestHandler
 from .Comment import Comment
 from .Race import Race
 from .User import User
-from json import dumps
 
 class Track:
-	__client = None
 	__leaderboard = []
-	def __init__(self, parent, data):
-		self.__client = parent
+	def __init__(self, data = {}):
+		self.comments = CommentManager(self)
+		self.races = RaceManager(self)
 		track = data.get('track') or data
-		self.author = User(self.__client)
+		self.author = User()
 		self.author.avatar = track.get('author_img_small')
 		self.author.displayName = track.get('author')
 		self.author.id = track.get('u_id')
@@ -35,10 +36,9 @@ class Track:
 				'refillCost': totd.get('refill_cost')
 			}
 
-		self.comments = CommentManager(self, self.__client)
 		if 'track_comments' in data:
 			comments = data.get('track_comments')
-			self.comments.extend([Comment(self.comments, self, data) for data in comments])
+			self.comments.extend([Comment(self, data) for data in comments])
 			self.maxCommentLength = data.get('max_comment_length') or 500
 
 		if 'track_stats' in data:
@@ -56,38 +56,31 @@ class Track:
 			}
 
 	def challenge(self, users = [], message = ''):
-		return self.__client.post('/challenge/send', data = {
+		return RequestHandler.post('/challenge/send', True, data = {
 			'msg': str(message),
 			'track_slug': self.id,
 			'users': ','.join(users)
 		}).get('debug')
 
 	def flag(self):
-		self.__client.get('/track_api/flag/' + str(self.id))
-		return True
+		return bool(RequestHandler.get('/track_api/flag/' + str(self.id), True))
 
 	def leaderboard(self):
-		res = self.__client.post('/track_api/load_leaderboard', data = {
+		res = RequestHandler.post('/track_api/load_leaderboard', data = {
 			't_id': self.id
 		})
-		self.__leaderboard = [Race(self.__client, data) for data in res.get('track_leaderboard')]
+		self.__leaderboard = [Race(data) for data in res.get('track_leaderboard')]
 		return self.__leaderboard
-
-	def loadRaces(self, users):
-		return self.__client.post('/track_api/load_races', data = {
-			't_id': self.id,
-			'u_ids': ','.join(users)
-		})
 
 	def vote(self, vote):
 		vote = int(vote)
-		return self.__client.post('/track_api/vote', data = {
+		return RequestHandler.post('/track_api/vote', True, data = {
 			't_id': self.id,
 			'vote': vote
 		})
 
 	def addToDaily(self, lives = 30, refill_cost = 10, gems = 500):
-		return self.__client.post('/moderator/add_track_of_the_day', data = {
+		return RequestHandler.post('/moderator/add_track_of_the_day', True, data = {
 			't_id': self.id,
 			'lives': lives,
 			'rfll_cst': refill_cost,
@@ -95,37 +88,32 @@ class Track:
 		})
 
 	def removeFromDaily(self):
-		return self.__client.post('/admin/removeTrackOfTheDay', data = {
+		return RequestHandler.post('/admin/removeTrackOfTheDay', True, data = {
 			't_id': self.id,
 			'd_ts': None
 		})
 
 	def feature(self):
-		self.__client.post(f'/track_api/feature_track/{str(self.id)}/1')
+		RequestHandler.post(f'/track_api/feature_track/{str(self.id)}/1', True)
 		self.featured = True
-		return self.featured
+		return True
 
 	def unfeature(self):
-		self.__client.post(f'/track_api/feature_track/{str(self.id)}/0')
+		RequestHandler.post(f'/track_api/feature_track/{str(self.id)}/0', True)
 		self.featured = False
-		return self.featured
+		return True
 
 	def hide(self):
-		self.__client.post('/moderator/hide_track/' + str(self.id))
+		RequestHandler.post('/moderator/hide_track/' + str(self.id), True)
 		self.hidden = True
-		return self.hidden
+		return True
 
 	def unhide(self):
-		self.__client.post('/moderator/unhide_track/' + str(self.id))
+		RequestHandler.post('/moderator/unhide_track/' + str(self.id), True)
 		self.hidden = False
-		return self.hidden
+		return True
 
 	def hideAsAdmin(self):
-		return self.__client.post('/admin/hide_track', data = {
+		return RequestHandler.post('/admin/hide_track', True, data = {
 			'track_id': self.id
 		})
-
-	def toJSON(self):
-		clone = self.__dict__
-		del clone[f'_{self.__class__.__name__}__client']
-		return dumps(clone, sort_keys=True, indent=4)

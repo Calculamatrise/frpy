@@ -1,20 +1,19 @@
+from ..managers.CosmeticManager import CosmeticManager
 from ..managers.FriendManager import FriendManager
+from ..utils.RequestHandler import RequestHandler
 from .FriendRequest import FriendRequest
-from json import dumps
 
 class User:
-	__client = None
-	def __init__(self, parent, data = {}, isCurrentUser = False):
-		self.__client = parent
+	def __init__(self, data = {}, isCurrentUser = False):
 		user = data.get('user') or data
 		self.admin = user.get('admin')
 		self.avatar = user.get('img_url_large') or user.get('img_url_medium') or user.get('img_url_small')
 		self.classic = user.get('classic')
-		self.cosmetics = user.get('cosmetics')
+		self.cosmetics = CosmeticManager(self, user.get('cosmetics'))
 		self.displayName = user.get('d_name')
 		self.forums = user.get('forum_url')
 		self.id = user.get('u_id')
-		self.moderator = user.get('moderator') or False
+		self.moderator = user.get('moderator')
 		self.plus = user.get('plus')
 		self.username = user.get('u_name')
 		if 'activity_time_ago' in data:
@@ -28,15 +27,14 @@ class User:
 			createdTracks = data.get('created_tracks')
 			self.createdTracks = createdTracks.get('tracks')
 
-		self.friends = FriendManager(self.__client)
+		self.friends = FriendManager()
 		if 'friends' in data:
 			friends = data.get('friends')
-			self.friends.count = friends.get('friend_cnt')
-			self.friends.extend([User(self.__client, friend) for friend in friends.get('friends_data')])
+			self.friends.extend([User(friend) for friend in friends.get('friends_data')])
 
 		if 'friend_requests' in data:
 			friendRequests = data.get('friend_requests')
-			self.friends.requests.extend([FriendRequest(self.friends.requests, data) for data in friendRequests.get('request_data')])
+			self.friends.requests.extend([FriendRequest(data, parent = self.friends.requests) for data in friendRequests.get('request_data')])
 
 		if 'has_max_friends' in data:
 			self.friendLimitReached = data.get('has_max_friends')
@@ -86,144 +84,139 @@ class User:
 			}
 
 	def subscribe(self):
-		return bool(self.__client.post('/track_api/subscribe', data = {
+		return bool(RequestHandler.post('/track_api/subscribe', True, data = {
 			'sub_uid': self.id,
 			'subscribe': 1
 		}))
 
 	def unsubscribe(self):
-		return bool(self.__client.post('/track_api/subscribe', data = {
+		return bool(RequestHandler.post('/track_api/subscribe', True, data = {
 			'sub_uid': self.id,
 			'subscribe': 0
 		}))
 
 	def updatePersonalData(self, name, value):
-		return bool(self.__client.post('/account/update_personal_data', data = {
+		return bool(RequestHandler.post('/account/update_personal_data', True, data = {
 			'name': name,
 			'value': value
 		}))
 
 	def deletePersonalData(self, name, value):
-		return bool(self.__client.post('/account/delete_all_personal_data'))
+		return bool(RequestHandler.post('/account/delete_all_personal_data', True))
 
 	def selectProfileImage(self, img_type):
-		return bool(self.__client.post('/account/update_photo', data = {
+		return bool(RequestHandler.post('/account/update_photo', True, data = {
 			'img_type': img_type
 		}))
 
 	def changeDescription(self, description):
-		return bool(self.__client.post('/account/edit_profile', data = {
+		return bool(RequestHandler.post('/account/edit_profile', True, data = {
 			'name': 'about',
 			'value': description
 		}))
 
 	def changePassword(self, old_password, new_password):
-		return bool(self.__client.post('/account/change_password', data = {
+		return bool(RequestHandler.post('/account/change_password', True, data = {
 			'old_password': old_password,
 			'new_password': new_password
 		}))
 
 	def changeUsername(self, username):
-		if self.id == self.__client.user.id:
-			return bool(self.__client.post('/account/edit_profile', data = {
+		if self.id == RequestHandler.get('/account/settings').get('user').get('id'):
+			return bool(RequestHandler.post('/account/edit_profile', True, data = {
 				'name': 'u_name',
 				'value': username
 			}))
 
-		return bool(self.__client.post('/moderator/change_username', data = {
+		return bool(RequestHandler.post('/moderator/change_username', True, data = {
 			'u_id': self.id,
 			'username': username
 		}))
 
 	def changeUsernameAsAdmin(self, username):
-		return bool(self.__client.post('/admin/change_username', data = {
+		return bool(RequestHandler.post('/admin/change_username', True, data = {
 			'change_username_current': self.username,
 			'change_username_new': username
 		}))
 
 	def setForumPassword(self, password):
-		return bool(self.__client.post('/account/update_forum_account', data = {
+		return bool(RequestHandler.post('/account/update_forum_account', True, data = {
 			'password': password
 		}))
 
 	def transferCoins(self, amount, message = ''):
-		return bool(self.__client.post('/account/plus_transfer_coins', data = {
+		return bool(RequestHandler.post('/account/plus_transfer_coins', True, data = {
 			'transfer_coins_to': self.username,
 			'transfer_coins_amount': amount,
 			'msg': message
 		}))
 
 	def ban(self):
-		return bool(self.__client.post('/moderator/ban_user', data = {
+		return bool(RequestHandler.post('/moderator/ban_user', True, data = {
 			'u_id': self.id
 		}))
 
 	def banAsAdmin(self, duration = 0, delete_races = False):
-		return bool(self.__client.post('/admin/ban_user', data = {
+		return bool(RequestHandler.post('/admin/ban_user', True, data = {
 			'ban_secs': int(duration),
 			'delete_race_stats': delete_races,
 			'username': self.username
 		}))
 
 	def unban(self):
-		return bool(self.__client.post('/moderator/unban_user', data = {
+		return bool(RequestHandler.post('/moderator/unban_user', True, data = {
 			'u_id': self.id
 		}))
 
 	def changeEmail(self, email):
-		return bool(self.__client.post('/moderator/change_email', data = {
+		return bool(RequestHandler.post('/moderator/change_email', True, data = {
 			'u_id': self.id,
 			'email': email
 		}))
 
 	def changeEmailAsAdmin(self, email):
-		return bool(self.__client.post('/admin/change_user_email', data = {
+		return bool(RequestHandler.post('/admin/change_user_email', True, data = {
 			'username': self.username,
 			'email': email
 		}))
 
-	def deactivate():
-		return bool(self.__client.post('/admin/deactivate_user', data = {
+	def deactivate(self):
+		return bool(RequestHandler.post('/admin/deactivate_user', True, data = {
 			'username': self.username
 		}))
 
-	def delete():
-		return bool(self.__client.post('/admin/delete_user_account', data = {
+	def delete(self):
+		return bool(RequestHandler.post('/admin/delete_user_account', True, data = {
 			'username': self.username
 		}))
 
-	def toggleOA():
-		return bool(self.__client.post('/moderator/toggle_official_author/' + str(self.id)))
+	def toggleOA(self):
+		return bool(RequestHandler.post('/moderator/toggle_official_author/' + str(self.id), True))
 
-	def toggleClassicAuthorAsAdmin():
-		return bool(self.__client.post('/admin/toggle_classic_user', data = {
+	def toggleClassicAuthorAsAdmin(self):
+		return bool(RequestHandler.post('/admin/toggle_classic_user', True, data = {
 			'toggle_classic_uname': self.username
 		}))
 
 	def addPlusDays(self, days, remove):
-		return bool(self.__client.post('/admin/add_plus_days', data = {
+		return bool(RequestHandler.post('/admin/add_plus_days', True, data = {
 			'add_plus_days': days,
 			'username': self.username,
 			'add_plus_remove': remove
 		}))
 
 	def addWonCoins(self, coins):
-		return bool(self.__client.post('/admin/add_won_coins', data = {
+		return bool(RequestHandler.post('/admin/add_won_coins', True, data = {
 			'coins_username': self.username,
 			'num_coins': int(coins)
 		}))
 
 	def messagingBan(self):
-		return bool(self.__client.post('/admin/user_ban_messaging', data = {
+		return bool(RequestHandler.post('/admin/user_ban_messaging', True, data = {
 			'messaging_ban_username': self.username
 		}))
 
 	def uploadingBan(self):
-		return bool(self.__client.post('/admin/user_ban_uploading', data = {
+		return bool(RequestHandler.post('/admin/user_ban_uploading', True, data = {
 			'uploading_ban_username': self.username
 		}))
-
-	def toJSON(self):
-		clone = self.__dict__
-		del clone[f'_{self.__class__.__name__}__client']
-		return dumps(clone, sort_keys=True, indent=4)

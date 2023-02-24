@@ -1,51 +1,49 @@
 from ..structures.Track import Track
 from ..structures.User import User
+from ..utils.RequestHandler import RequestHandler
 import requests
 
 def getAuthorLeaderboard():
-    return requests.get("https://www.freeriderhd.com/leaderboards/player/lifetime?ajax").json()
+    return RequestHandler.get('/leaderboards/player/lifetime')
 
 def getCategory(category):
-    return requests.get(f"https://www.freeriderhd.com/{category}?ajax").json()
+    return RequestHandler.get('/' + category)
 
 def getComment(track_id, comment_id):
-    return requests.get(f"https://www.freeriderhd.com//track_comments/load_more/{track_id}/{comment_id}").json()
+    return RequestHandler.get(f'/track_comments/load_more/{track_id}/{comment_id}')
 
 def getFeaturedGhosts():
-    return requests.get("https://raw.githubusercontent.com/Calculamatrise/official_featured_ghosts/master/data.json").json()
-
-def getHome():
-    return requests.get("https://www.freeriderhd.com?ajax").json()
+    return requests.get("https://raw.githubusercontent.com/Calculamatrise/official_featured_ghosts/master/data.json")
 
 def getPlayerLeaderboard():
-    return requests.get("https://www.freeriderhd.com/leaderboards/player/lifetime?ajax").json()
+    return RequestHandler.get('/leaderboards/player/lifetime')
 
 def getRace(track_id, username):
-    return requests.get(f"https://www.freeriderhd.com/t/{int(track_id)}/r/{username}?ajax").json()
+    return RequestHandler.get(f'/t/{int(track_id)}/r/{username}')
 
 def getRandom():
-    return requests.get("https://www.freeriderhd.com/random/track?ajax").json()
+    return RequestHandler.get('/random/track')
 
 def getTrack(tid):
     tid = int(tid)
     if tid < 1001:
         raise Exception("No tracks exist with an id less than 1001!")
 
-    return Track(requests.get(f"https://www.freeriderhd.com/t/{tid}?ajax").json())
+    return Track(RequestHandler.get('/t/' + str(tid)))
 
 def getTrackLeaderboard(tid):
     tid = int(tid)
     if tid < 1001:
         raise Exception("No tracks exist with an id less than 1001!")
 
-    return requests.post("https://www.freeriderhd.com/track_api/load_leaderboard", data = {
+    return RequestHandler.post('/track_api/load_leaderboard', data = {
         't_id': tid
-    }).json()
+    })
 
 def getUser(uid):
     if isinstance(uid, int):
-        uid = requests.post("https://www.freeriderhd.com/friends/remove_friend/", data = {
+        uid = RequestHandler.post('/friends/remove_friend', False, data = {
             'u_id': uid
-        }).json().get('msg')[25:-31]
+        }).get('msg')[25:-31]
 
-    return User(None, requests.get(f"https://www.freeriderhd.com/u/{uid}?ajax").json())
+    return User(RequestHandler.get('/u/' + str(uid)))

@@ -1,8 +1,8 @@
+from ..utils.RequestHandler import RequestHandler
 from .FriendRequestManager import FriendRequestManager
 
 class FriendManager(list):
-	def __init__(self, parent):
-		self.client = parent
+	def __init__(self):
 		self.requests = FriendRequestManager(self)
 
 	def add(self, username):
@@ -22,7 +22,7 @@ class FriendManager(list):
 			if friend.get('username') == uid:
 				uid = friend.id
 
-		response = self.client.post('/friends/remove_friend', data = {
+		response = RequestHandler.post('/friends/remove_friend', data = {
 			'u_id': uid
 		})
 		return response and response.get('result')

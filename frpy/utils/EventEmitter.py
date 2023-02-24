@@ -3,7 +3,6 @@ from threading import Thread
 class EventEmitter:
 	__deprecated = set()
 	__events = {}
-	__threads = []
 	def emit(self, event, *args):
 		if event not in self.__events: return
 		threads = [Thread(target = listener, args = (self, *args)) for listener in self.__events[event]]

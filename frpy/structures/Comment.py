@@ -1,9 +1,9 @@
+from ..utils.RequestHandler import RequestHandler
+
 class Comment:
-	__parent = None
-	__track = None
-	def __init__(self, parent, track, data):
-		self.__parent = parent
-		self.__track = track
+	track = None
+	def __init__(self, track, data = {}):
+		self.track = track
 		comment = data.get('comment') or data
 		self.deletable = comment.get('can_delete')
 		self.id = comment.get('id')
@@ -20,11 +20,15 @@ class Comment:
 
 	def delete(self):
 		if not deletable:
-			self.__parent.client.throw(Exception("Cannot delete a comment which you did not post!"))
-			return False
+			raise Exception("Cannot delete a comment which you did not post!")
 
-		self.__parent.client.get(f'/track_comments/delete/{self.__track.id}/' + self.id)
-		return True
+		return bool(RequestHandler.get(f'/track_comments/delete/{self.track.id}/' + str(self.id)))
+
+	def flag(self):
+		return bool(RequestHandler.get(f'/track_comments/flag/{self.track.id}/' + str(self.id)))
 
 	def reply(self, msg):
-		self.__parent.post(f"@{self.author.get('displayName')}, " + str(msg))
+		return bool(RequestHandler.post('/track_comments/post', data = {
+			't_id': self.track.id,
+			'msg': str(msg)
+		}))

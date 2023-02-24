@@ -1,5 +1,7 @@
 from ..utils.EventEmitter import EventEmitter
 from ..utils.Events import Events
+from ..utils.RequestHandler import RequestHandler
+from ..structures.Cosmetic import Cosmetic
 from ..structures.Notification import Notification
 from ..structures.User import User
 import requests
@@ -14,52 +16,19 @@ class BaseClient(EventEmitter):
 			self.__interval = int(kwargs.get('interval'))
 			self.once('ready', self.__requestDatapoll)
 
-	def __request(self, endpoint, **kwargs):
-		if not self.__token:
-			self.throw(Exception("Client is not logged in!"))
-
-		method = 'get'
-		if 'method' in kwargs:
-			method = kwargs.get('method')
-			del kwargs['method']
-
-		try:
-			response = getattr(requests, method)(f'https://www.freeriderhd.com{endpoint}?ajax=true&t_1=ref&t_2=desk&app_signed_request=' + self.__token, **kwargs)
-			response.raise_for_status()  # raises exception when not a 2xx response
-			if response.status_code != 204:
-				if response.headers["content-type"].strip().startswith("application/json"):
-					response = response.json()
-					if response.get('result') == False or response.get('code') == False:
-						return self.throw(Exception(response.get('msg')))
-					return response
-				return response.text
-		except Exception as e:
-			self.throw(e)
-
 	def __requestDatapoll(self, *args):
 		response = self.datapoll()
-		self.emit('raw', response)
+		response['notification_count'] = 1
 		if response.get('notification_count') > 0:
 			notifications = self.notifications()
+			self.emit('raw', notifications)
 			notificationDays = notifications.get('notification_days')
-			notifications = notificationDays[0].get('notifications')[:response.get('notification_count')]
+			notifications = [Notification(data) for data in notificationDays[0].get('notifications')[:response.get('notification_count')]]
 			for notification in notifications:
-				self.emit('notification', Notification(notification))
+				self.emit(notification.id, notification)
 
 		time.sleep(self.__interval / 1e3)
 		self.__requestDatapoll()
-
-	def __verifyToken(self, token):
-		try:
-			self.__token = token
-			response = self.get('/account/settings')
-			if 'user' not in response:
-				raise Exception("Invalid token!")
-
-			return response.get('user')
-		except Exception as e:
-			self.__token = None
-			self.throw(e)
 
 	def throw(self, exception):
 		if self.listeners('error') > 0:
@@ -67,25 +36,25 @@ class BaseClient(EventEmitter):
 		else:
 			raise exception
 
-	def get(self, *args):
-		return self.__request(*args)
-
-	def post(self, *args, **kwargs):
-		return self.__request(*args, method = 'post', **kwargs)
-
 	def login(self, token):
 		if isinstance(token, dict):
 			self.__token = 'True'
-			response = self.post('/auth/standard_login', data = token)
+			response = RequestHandler.post('/auth/standard_login', data = token)
 			if 'app_signed_request' in response:
 				token = response.get('app_signed_request')
 
-		response = self.__verifyToken(token)
+		response = RequestHandler.assertToken(token)
 		if not response:
 			return
 
-		self.user = User(self, self.get('/u/' + response.get('d_name')), True)
+		self.user = User(RequestHandler.get('/u/' + response.get('d_name')), True)
 		self.user.moderator = response.get('moderator')
+		for index, partial in enumerate(self.user.friends):
+			self.user.friends[index] = self.users.fetch(partial.username)
+
+		for head in [Cosmetic(data) for data in RequestHandler.get('/store/gear').get('gear').get('head_gear')]:
+			self.user.cosmetics.cache.set(head.id, head)
+
 		self.emit(Events.get('ClientReady'))
 		return self
 
@@ -93,9 +62,9 @@ class BaseClient(EventEmitter):
 		self.token = None
 
 	def datapoll(self):
-		return self.post('/datapoll/poll_request', data = {
+		return RequestHandler.post('/datapoll/poll_request', True, data = {
 			'notifications': 'true'
 		})
 
 	def notifications(self):
-		return self.get('/notifications')
+		return RequestHandler.get('/notifications', True)

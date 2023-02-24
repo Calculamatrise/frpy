@@ -6,9 +6,11 @@ Events = {
     'FriendRequestAccepted': 'friendRequestAccepted',
     'FriendRequestReceived': 'friendRequestReceived',
     'FriendTrackChallenge': 'trackChallenge',
+	'MobileAccountLinkedAward': 'mobileAccountLinkedAward',
     'Raw': 'raw',
     'SubscribedTrackPublish': 'subscribedTrackPublish',
     'TrackLeaderboardPassed': 'trackLeaderboardPassed',
-    'TrackUsernameMention': 'commentMention',
+    'TrackUsernameMention': 'trackCommentMention',
+	'TransferredCoins': 'transferredCoins',
     'Warn': 'warn'
 }
