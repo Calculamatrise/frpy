@@ -43,5 +43,9 @@ class RequestHandler:
 		return response.get('user')
 
 	@staticmethod
+	def deleteToken():
+		RequestHandler.__session = None
+
+	@staticmethod
 	def clientUser():
 		return RequestHandler.__session and RequestHandler.__session.get('user')

@@ -59,7 +59,8 @@ class BaseClient(EventEmitter):
 		return self
 
 	def logout(self):
-		self.token = None
+		RequestHandler.deleteToken()
+		self.emit('disconnected')
 
 	def datapoll(self):
 		return RequestHandler.post('/datapoll/poll_request', True, data = {
